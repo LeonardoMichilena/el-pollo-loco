@@ -5,3 +5,10 @@ body {
     font-family: monospace;
     background-color: lightgray;
 }
+canvas {
+    display: flex;
+    margin: auto;
+}
+h1 {
+    text-align: center;
+}
