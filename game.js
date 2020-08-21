@@ -2,26 +2,38 @@
 // General variables
 let canvas;
 let ctx;
+let imgCounters = {
+    bg:0,
+    walk:0,
+    idle:0,
+    sleep:0,
+    jump:0
+}
+let simpleCounters = {
+    bg:0,
+    walk:0,
+    idle:0,
+    sleep:0,
+    jump:0
+}
 
 //Variables for the clouds & background
-let cloudIntensity = 9;
+let cloudIntensity = 3;
 let cloudSpeed = 1;
 let clouds = [];
 let bgImgSettings = [];
-let bgImgNum = 0;
-let bgImg_x = [];
 
 //Variables for the character
 let isMovingLeft = false;
 let isMovingRight = false;
 let isJumping = false;
+let countJump = 0;
+let onTheAir = false;
 let lastMoveForward = true;
 let character_x = 300;
 let character_y = 180;
 let countSteps = 0;
-let nextWalkImgCounter = 0;
-let walk = ["img/walk1.png", "img/walk2.png", "img/walk3.png", "img/walk4.png", "img/walk5.png", "img/walk6.png"];
-
+let walk = ["img/character/walk1.png", "img/character/walk2.png", "img/character/walk3.png", "img/character/walk4.png", "img/character/walk5.png", "img/character/walk6.png"];
 
 function init() {
     //Defines the canvas from the html tag and creates a context for drawing
@@ -49,7 +61,7 @@ function draw() {
 
 function drawSky() {
     let img = new Image();
-    img.src = "img/bg-cielo.png";
+    img.src = "img/background/bg-cielo.png";
     if (img.complete) {
         ctx.drawImage(img, 0, 0, img.width * 0.38, img.height * 0.38);
     }
@@ -57,6 +69,7 @@ function drawSky() {
         drawCloud(i);
     }
 }
+
 function drawCloud(i) {
     //if the clouds array is empty, create new cloud with random parameters
     if (clouds[i] == undefined) {
@@ -69,7 +82,7 @@ function drawCloud(i) {
         };
     }
     let img = new Image();
-    img.src = `img/clouds${clouds[i].type}.png`;
+    img.src = `img/background/clouds${clouds[i].type}.png`;
     if (img.complete) {
         ctx.drawImage(img, clouds[i].x, clouds[i].y, img.width * clouds[i].size, img.height * clouds[i].size);
     }
@@ -85,6 +98,7 @@ function drawCloud(i) {
         };
     }
 }
+
 function drawGround() {
     ctx.fillStyle = "#ffe699";
     ctx.fillRect(0, 350, canvas.width, canvas.height);
@@ -96,7 +110,7 @@ function drawBackground() {
     addBackgroundImage("bg3", -30, 1);
     addBackgroundImage("bg2", -10, 2);
     addBackgroundImage("bg1", 0, 5);
-    bgImgNum = 0;
+    imgCounters.bg = 0;
 }
 /**
  * Adds bg img (in pairs) and adds the given parameters to the bgImgSettings array, alternating always the two files of each background
@@ -104,66 +118,89 @@ function drawBackground() {
  * @param {*} y: background image y coordinate
  * @param {*} offsetSpeed: Offset when the character is moving left or right
  */
-function addBackgroundImage(name,y, offsetSpeed) {
-    if (bgImgSettings[bgImgNum] == undefined){
-        bgImgSettings[bgImgNum] = {
-            x:[0,719], 
-            y:y,
-            offsetSpeed:offsetSpeed
-        };
-    }
+function addBackgroundImage(name, y, offsetSpeed) {
+    if (bgImgSettings[imgCounters.bg] == undefined) bgImgSettings[imgCounters.bg] = { x: [0, 719], y: y, offsetSpeed: offsetSpeed };
     let img = [];
     for (i = 0; i < 2; i++) {
-        if(bgImgSettings[bgImgNum].x[i] < -719) bgImgSettings[bgImgNum].x[i] = 719;
-        else if(bgImgSettings[bgImgNum].x[i] > 720) bgImgSettings[bgImgNum].x[i] = -717;
+        if (bgImgSettings[imgCounters.bg].x[i] < -719) bgImgSettings[imgCounters.bg].x[i] = 719;
+        else if (bgImgSettings[imgCounters.bg].x[i] > 720) bgImgSettings[imgCounters.bg].x[i] = -717;
         img[i] = new Image();
-        img[i].src = `img/${name}-${i + 1}.png`;
+        img[i].src = `img/background/${name}-${i + 1}.png`;
         if (img[i].complete) {
             if (isMovingLeft) {
-                bgImgSettings[bgImgNum].x[i] = bgImgSettings[bgImgNum].x[i] + bgImgSettings[bgImgNum].offsetSpeed;
+                bgImgSettings[imgCounters.bg].x[i] = bgImgSettings[imgCounters.bg].x[i] + bgImgSettings[imgCounters.bg].offsetSpeed;
+                countSteps++;
             } else if (isMovingRight) {
-                bgImgSettings[bgImgNum].x[i] = bgImgSettings[bgImgNum].x[i] - bgImgSettings[bgImgNum].offsetSpeed;
+                bgImgSettings[imgCounters.bg].x[i] = bgImgSettings[imgCounters.bg].x[i] - bgImgSettings[imgCounters.bg].offsetSpeed;
+                countSteps++;
             }
             //Draws img and resizes it to fill the width of the canvas (720)
-            ctx.drawImage(img[i], bgImgSettings[bgImgNum].x[i], y, img[i].width * (1 / (img[i].width / 720)), img[i].height * (1 / (img[i].width / 720)));
+            ctx.drawImage(img[i], bgImgSettings[imgCounters.bg].x[i], y, img[i].width * (1 / (img[i].width / 720)), img[i].height * (1 / (img[i].width / 720)));
         }
     }
-    bgImgNum++;
+    imgCounters.bg++;
 }
+
 function drawCharacter() {
+    drawCharacterWalk();
+    characterJump();
+
+}
+
+function drawCharacterWalk() {
     let img = new Image();
     if (!isMovingLeft && !isMovingRight) {
-        img.src = "img/standing.png";
+        simpleCounters.idle++;
+        if(simpleCounters.idle < 80) img.src = "img/character/standing.png";
+        else if(simpleCounters.idle >= 40 && imgCounters.idle < 10){
+            simpleCounters.idle = 0;
+            imgCounters.idle++;
+            img.src = `img/character/idle${imgCounters.idle}.png`
+            console.log(imgCounters.idle);
+        } else imgCounters.idle = 0;
     } else {
-        if (countSteps >= 2) {
+        if (countSteps > 20) {
             countSteps = 0;
-            if (nextWalkImgCounter >= 5 || nextWalkImgCounter <= 0) { nextWalkImgCounter = 0; }
-            nextWalkImgCounter++;
+            if (imgCounters.walk >= 5 || imgCounters.walk <= 0) { imgCounters.walk = 0; }
+            imgCounters.walk++;
         }
-        img.src = walk[nextWalkImgCounter];
+        img.src = walk[imgCounters.walk];
     }
     if (img.complete) {
-        if (isMovingRight || lastMoveForward) {
-            ctx.drawImage(img, character_x, character_y, img.width * 0.2, img.height * 0.2);
-        } else if (isMovingLeft || !lastMoveForward) {
+        if ((isMovingLeft || !lastMoveForward) && !isMovingRight) {
+            ctx.save();
+            ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, character_x, character_y, img.width * 0.2, img.height * 0.2);
         }
+        ctx.drawImage(img, character_x, character_y, img.width * 0.2, img.height * 0.2);
+    }
+    ctx.restore();
+
+}
+
+function characterJump() {
+    if (isJumping) {
+        if (character_y > 50) character_y = character_y - 10;
+        if (character_y == 50) isJumping = false;
+    } else if (!isJumping) {
+        if (character_y < 175) character_y = character_y + 10;
     }
 }
 
 function listenForKeys() {
     document.addEventListener("keydown", e => {
         const k = e.key;
+        console.log(k);
         if (k == "ArrowRight") {
             isMovingRight = true;
-            countSteps++;
+            isMovingLeft = false;
         }
         if (k == "ArrowLeft") {
+            isMovingRight = false;
             isMovingLeft = true;
-            countSteps++;
         }
-        if (k == "Space") {
+        if (k == " " || k == "ArrowUp") {
+            console.log(11);
             isJumping = true;
             countJump++;
         }
@@ -178,7 +215,7 @@ function listenForKeys() {
             isMovingLeft = false;
             lastMoveForward = false;
         }
-        if (k == "Space") {
+        if (k == " " || k == "ArrowUp") {
             isJumping = false;
         }
     });
