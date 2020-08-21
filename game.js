@@ -3,18 +3,18 @@
 let canvas;
 let ctx;
 let imgCounters = {
-    bg:0,
-    walk:0,
-    idle:0,
-    sleep:0,
-    jump:0
+    bg: 0,
+    standing: 0
 }
 let simpleCounters = {
-    bg:0,
-    walk:0,
-    idle:0,
-    sleep:0,
-    jump:0
+    bg: 0,
+    standing: 0
+}
+//JSON for the Graphics
+let graphics = {
+    bgSky:"img/background/bg-cielo.png",
+    clouds:["img/background/clouds1.png","img/background/clouds2.png"],
+    walk:["img/background/walk1.png","img/background/walk2.png","img/background/walk3.png","img/background/walk4.png","img/background/walk5.png","img/background/walk6.png"]
 }
 
 //Variables for the clouds & background
@@ -27,13 +27,10 @@ let bgImgSettings = [];
 let isMovingLeft = false;
 let isMovingRight = false;
 let isJumping = false;
-let countJump = 0;
-let onTheAir = false;
 let lastMoveForward = true;
 let character_x = 300;
 let character_y = 180;
 let countSteps = 0;
-let walk = ["img/character/walk1.png", "img/character/walk2.png", "img/character/walk3.png", "img/character/walk4.png", "img/character/walk5.png", "img/character/walk6.png"];
 
 function init() {
     //Defines the canvas from the html tag and creates a context for drawing
@@ -50,9 +47,8 @@ function init() {
  *  */
 function draw() {
     drawSky();
-    drawGround();
     drawBackground();
-    // drawEnemy();
+   // drawEnemies();
     drawCharacter();
 
     //Automatically sets the animation frame request interval, flackering decreases
@@ -61,7 +57,7 @@ function draw() {
 
 function drawSky() {
     let img = new Image();
-    img.src = "img/background/bg-cielo.png";
+    img.src = graphics.bgSky;
     if (img.complete) {
         ctx.drawImage(img, 0, 0, img.width * 0.38, img.height * 0.38);
     }
@@ -72,7 +68,8 @@ function drawSky() {
 
 function drawCloud(i) {
     //if the clouds array is empty, create new cloud with random parameters
-    if (clouds[i] == undefined) {
+    //or if the clouds are out of screen, start new cloud with random parameters
+    if (clouds[i] == undefined || clouds[i].x <= - 1920 * clouds[i].size) {
         clouds[i] = {
             type: randomNum(1, 2),
             x: randomNum(720, 1000),
@@ -82,34 +79,23 @@ function drawCloud(i) {
         };
     }
     let img = new Image();
-    img.src = `img/background/clouds${clouds[i].type}.png`;
+    img.src = graphics.clouds[clouds[i].type-1];
     if (img.complete) {
         ctx.drawImage(img, clouds[i].x, clouds[i].y, img.width * clouds[i].size, img.height * clouds[i].size);
     }
     clouds[i].x = clouds[i].x - (clouds[i].speed * cloudSpeed);
-    //if the clouds are out of screen, start new cloud with random parameters
-    if (clouds[i].x <= - 1920 * clouds[i].size) {
-        clouds[i] = {
-            type: randomNum(1, 2),
-            x: randomNum(720, 1000),
-            y: randomNum(-10, 30),
-            size: randomNum(0.2, 0.7),
-            speed: randomNum(0.1, 0.7)
-        };
-    }
-}
-
-function drawGround() {
-    ctx.fillStyle = "#ffe699";
-    ctx.fillRect(0, 350, canvas.width, canvas.height);
 }
 /**
- * Adds background images, from most far away to closest background
+ * Adds ground and background images, from most far away to closest background
  */
 function drawBackground() {
+    ctx.fillStyle = "#ffe699";
+    ctx.fillRect(0, 350, canvas.width, canvas.height);
+
     addBackgroundImage("bg3", -30, 1);
     addBackgroundImage("bg2", -10, 2);
     addBackgroundImage("bg1", 0, 5);
+
     imgCounters.bg = 0;
 }
 /**
@@ -142,40 +128,46 @@ function addBackgroundImage(name, y, offsetSpeed) {
 }
 
 function drawCharacter() {
-    drawCharacterWalk();
+    drawCharacterAnimations();
     characterJump();
-
 }
-
-function drawCharacterWalk() {
+/**
+ * Character animations when standing, moving and jumping
+ */
+function drawCharacterAnimations() {
     let img = new Image();
-    if (!isMovingLeft && !isMovingRight) {
-        simpleCounters.idle++;
-        if(simpleCounters.idle < 80) img.src = "img/character/standing.png";
-        else if(simpleCounters.idle >= 40 && imgCounters.idle < 10){
-            simpleCounters.idle = 0;
-            imgCounters.idle++;
-            img.src = `img/character/idle${imgCounters.idle}.png`
-            console.log(imgCounters.idle);
-        } else imgCounters.idle = 0;
-    } else {
-        if (countSteps > 20) {
-            countSteps = 0;
-            if (imgCounters.walk >= 5 || imgCounters.walk <= 0) { imgCounters.walk = 0; }
-            imgCounters.walk++;
-        }
-        img.src = walk[imgCounters.walk];
+
+    //If standing without moving or jumping
+    if (!isMovingLeft && !isMovingRight && !isJumping) {
+        simpleCounters.standing++;
+        //if standing less than 5 seconds
+        if (simpleCounters.standing < 200) img.src = "img/character/standing.png";
+        //if standing more than 5 seconds
+        else if (simpleCounters.standing >= 200 && simpleCounters.standing < 400)
+            img.src = addAnimation("character", "idle", 6, 2);
+        //if standing mofe than 10 seconds until character moves
+        else if (simpleCounters.standing >= 400 && simpleCounters.standing < 800)
+            img.src = addAnimation("character", "sleep", 6, 2);
+        else simpleCounters.standing = 400;
+        //If moving to the left or right
+    } else if ((isMovingRight || isMovingRight) && !isJumping) {
+        simpleCounters.standing = 0;
+        img.src = addAnimation("character", "walk", 6, 10);
+        //If jumping (from standing or moving)
+    } else if (isJumping || (isJumping && (isMovingLeft || isMovingRight))) {
+        simpleCounters.standing = 0;
+        img.src = addAnimation("character", "jump", 10, 20);
+    }
+    ctx.save();
+    //When moving left, mirrors the images to the left side
+    if ((isMovingLeft || !lastMoveForward) && !isMovingRight) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
     }
     if (img.complete) {
-        if ((isMovingLeft || !lastMoveForward) && !isMovingRight) {
-            ctx.save();
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-        }
         ctx.drawImage(img, character_x, character_y, img.width * 0.2, img.height * 0.2);
     }
     ctx.restore();
-
 }
 
 function characterJump() {
@@ -185,6 +177,25 @@ function characterJump() {
     } else if (!isJumping) {
         if (character_y < 175) character_y = character_y + 10;
     }
+}
+/**
+ * Animates images and returns a image.src link.
+ * @param {*} folder : where the images are located inside img/
+ * @param {*} name : Name of the action, i.E.: the images should be named action1,action2,action3, etc.
+ * @param {*} numberOfImages : The total of images for the animation
+ * @param {*} frameSpeed : How quick the animation should be
+ */
+function addAnimation(folder, name, numberOfImages, frameSpeed) {
+    if (simpleCounters.name == undefined || imgCounters.name == undefined) {
+        simpleCounters.name = 0;
+        imgCounters.name = 1;
+    } else if (simpleCounters.name > 100 / frameSpeed && imgCounters.name < numberOfImages) {
+        simpleCounters.name = 0;
+        imgCounters.name++;
+        if (imgCounters.name >= numberOfImages) imgCounters.name = 1;
+    }
+    simpleCounters.name++;
+    return `img/${folder}/${name}${imgCounters.name}.png`;
 }
 
 function listenForKeys() {
@@ -200,9 +211,7 @@ function listenForKeys() {
             isMovingLeft = true;
         }
         if (k == " " || k == "ArrowUp") {
-            console.log(11);
             isJumping = true;
-            countJump++;
         }
     });
     document.addEventListener("keyup", e => {
@@ -220,7 +229,11 @@ function listenForKeys() {
         }
     });
 }
-
+/**
+ * Returns a random number between a mininum and a maximum, integers or floats.
+ * @param {*} min
+ * @param {*} max 
+ */
 function randomNum(min, max) {
     if (Number.isInteger(min) && Number.isInteger(max))
         return Math.floor(Math.random() * (max - min + 1) + min);
