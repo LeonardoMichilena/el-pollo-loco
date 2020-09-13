@@ -219,7 +219,7 @@ function drawCharacter() {
 }
 
 /**
- * Checks if character is dead, then adjusts the corresponding sounds and returns an image
+ * Checks if character is hurt, then adjusts the corresponding sounds and returns an image
  * @param {*} image image from the graphics
  */
 function checkForHurt(image) {
@@ -341,7 +341,7 @@ function drawAllEnemies() {
         drawEnemy("gallina", 0.35, 220);
     }
     //Final Enemy
-    drawEnemy("boss-walk", 0.4, 0);
+    drawEnemy("boss-walk", 0.4, -150);
     enemyCounter = 0;
 }
 
@@ -365,7 +365,6 @@ function drawEnemy(type, sizeScale, y) {
     let img;
     img = updateEnemy(img);
     checkForEnemyCollision();
-    console.log(character_y + "----" + enemySettings[enemyCounter].y);
     animateGraphic(graphics[enemySettings[enemyCounter].type], enemyGraphicsInterval);
     ctx.drawImage(img, enemySettings[enemyCounter].x, enemySettings[enemyCounter].y + 164, img.width * enemySettings[enemyCounter].size, img.height * enemySettings[enemyCounter].size);
     enemyCounter++;
@@ -466,33 +465,46 @@ function finalBossMovements(bossChangeDirection) {
  */
 function checkForEnemyCollision() {
     let enemy_x = enemySettings[enemyCounter].x;
-    let enemy_y = enemySettings[enemyCounter].y;
-    let enemyIsDead = enemySettings[enemyCounter].isDead;
 
     if (!enemySettings[enemyCounter].isDead && (enemySettings[enemyCounter].type == "pollito" || enemySettings[enemyCounter].type == "gallina")) {
 
         //Enemy dies when by colision character is falling on it and character gains 1 coin
-        if (character_x >= enemy_x - 50 && character_x <= enemy_x + 40 && character_y < 200 && character_y > 170 && isFalling && !characterIsHurt) {
-            if (!enemyIsDead) {
+        if (character_x >= enemy_x - 50 && character_x <= enemy_x + 40 && character_y <= 200 && character_y > 170 && isFalling && !characterIsHurt) {
+            if (!enemySettings[enemyCounter].isDead) {
                 AUDIO_ENEMYDYING.play();
                 collectableObject["coin"].count++;
                 enemySettings[enemyCounter].isDead = true;
             }
-        }
         //Character loses energy when by colision was not falling high enough or not falling at all, character loses energy
-    } else if (character_x >= enemy_x - 50 && character_x <= enemy_x + 40 && character_y > 200 && !enemyIsDead && !characterIsHurt) {
-        if (graphics["life-bar"].index < 5) graphics["life-bar"].index++;
-        else if (graphics["life-bar"].index == 6) {
-            gaveOver = true;
-            graphics["life-bar"].index = 0;
+        } else if (character_x >= enemy_x - 50 && character_x <= enemy_x + 40 && character_y > 200 && !isFalling && !characterIsHurt) {
+            if (graphics["life-bar"].index < 5) graphics["life-bar"].index++;
+            else if (graphics["life-bar"].index == 6) {
+                gaveOver = true;
+                graphics["life-bar"].index = 0;
+            }
+            AUDIO_DEAD.play();
+            characterIsHurt = true;
+            setTimeout(function () {
+                characterIsHurt = false;
+                AUDIO_DEAD.pause();
+                AUDIO_DEAD.currentTime = 0;
+            }, 3000);
         }
-        AUDIO_DEAD.play();
-        characterIsHurt = true;
-        setTimeout(function () {
-            characterIsHurt = false;
-            AUDIO_DEAD.pause();
-            AUDIO_DEAD.currentTime = 0;
-        }, 2500);
+    } else if (!enemySettings[enemyCounter].isDead && enemySettings[enemyCounter].type == "boss-walk"){
+        if (character_x >= enemy_x - 30 && character_x <= enemy_x + 40 && character_y > 200 && !isFalling && !characterIsHurt) {
+            if (graphics["life-bar"].index < 5) graphics["life-bar"].index++;
+            else if (graphics["life-bar"].index == 6) {
+                gaveOver = true;
+                graphics["life-bar"].index = 0;
+            }
+            AUDIO_DEAD.play();
+            characterIsHurt = true;
+            setTimeout(function () {
+                characterIsHurt = false;
+                AUDIO_DEAD.pause();
+                AUDIO_DEAD.currentTime = 0;
+            }, 3000);
+        }
     }
 }
 
