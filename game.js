@@ -2,7 +2,7 @@
 let canvas;
 let ctx;
 let endScreenOn = false;
-let gameOver = false;
+let gameIsOver = false;
 
 //sounds variables
 let AUDIO_WALK = new Audio('./audio/walk.mp3');
@@ -14,6 +14,7 @@ let AUDIO_BGMUSIC3 = new Audio('./audio/bgSound-3.mp3');
 let AUDIO_DEAD = new Audio('./audio/ayayay.mp3');
 let AUDIO_COIN = new Audio('./audio/coin.mp3');
 let AUDIO_BOSS1 = new Audio('./audio/boss_sound1.mp3');
+let AUDIO_SPLASH = new Audio('./audio/splash1.mp3');
 
 AUDIO_COIN.volume = 0.3;
 AUDIO_BOSS1.volume = 0.5;
@@ -61,6 +62,7 @@ let bossMovingRight;
 let bossCounter = 0;
 let bossIsAttacking = false;
 let bossSpeed = 2;
+let bossIsHurt = false;
 
 //Variables for the bottle throw
 let BOTTLE_NUMBER = 10;
@@ -83,9 +85,7 @@ function init() {
     //Adds all graphics in arrays in the graphics object
     addGraphics();
     loadAllImages();
-
     draw();
-
     listenForKeys();
 }
 
@@ -93,23 +93,26 @@ function init() {
  * Initializes the necesary drawings for the game
  *  */
 function draw() {
-    drawSky();
-    drawBackground();
-    drawAllEnemies();
-    drawCollectables();
-    drawCharacter();
-    drawObject("life-bar", 0, 0, 0.35, 0.15);
-    drawObject("bottle-icon", -10, 70, 0.1, 0.15);
-    drawObject("coin-icon", 90, 70, 0.08, 0.15);
-    drawText(collectableObject["bottle1"].count, "50px Arial", 50, 130);
-    drawText(collectableObject["coin"].count + "/" + (COIN_NUMBER + (ENEMYINTENSITY * 2)), "50px Arial", 155, 130);
+        drawSky();
+        drawBackground();
+        drawCollectables();
+        drawAllEnemies();
+        drawCharacter();
+        drawObject("life-bar", 0, 0, 0.35, 0.15);
+    
+        drawObject("bottle-icon", 0, 70, 0.1, 0.15);
+        drawText(collectableObject["bottle1"].count, "50px Arial", 60, 130);
+    
+        drawObject("coin-icon", 120, 70, 0.08, 0.15);
+        drawText(collectableObject["coin"].count + "/" + (COIN_NUMBER + (ENEMYINTENSITY * 2)), "50px Arial", 185, 130);    
+
     if (endScreenOn) {
         drawObject("boss-bar", canvas.width - 350, 10, 0.35, 0.15);
     }
+
     drawThrowBottle();
     //Automatically sets the animation frame request interval, flackering decreases
-    requestAnimationFrame(draw);
-
+    if(!gameIsOver) requestAnimationFrame(draw);
 }
 
 /**
@@ -189,8 +192,12 @@ function addBackgroundImage(name, y, offsetSpeed) {
         if (bgImgSettings[bgCounter].x[i] < -canvas.width) bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] + (canvas.width * 2);
         if (bgImgSettings[bgCounter].x[i] > canvas.width) bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] - (canvas.width * 2);
         //Background moves when character is moving, offset will be slower for further away backgrounds
-        if (isMovingLeft && !characterIsHurt && !endScreenOn) bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] + offsetSpeed;
-        else if (isMovingRight && !characterIsHurt && !endScreenOn) bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] - offsetSpeed;
+        if (isMovingLeft && !characterIsHurt && !endScreenOn) {
+            bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] + offsetSpeed;
+        }
+        else if (isMovingRight && !characterIsHurt && !endScreenOn) {
+            bgImgSettings[bgCounter].x[i] = bgImgSettings[bgCounter].x[i] - offsetSpeed;
+        }
         ctx.drawImage(img[i], bgImgSettings[bgCounter].x[i], (1 / (img[i].height / canvas.height)) * 10 - y, img[i].width * (1 / (img[i].width / canvas.width)), img[i].height * (1 / (img[i].width / canvas.width)));
     }
 
@@ -208,6 +215,7 @@ function drawCharacter() {
     img = checkForHurt(img);
 
     //When moving left, mirrors the images to the left side, and it's not the end screen
+    //if(isMovingLeft || !lastMoveForward) {
     if ((isMovingLeft || !lastMoveForward) && !isMovingRight && !endScreenOn) {
         ctx.save();
         ctx.translate(img.width + 120, 0);
@@ -276,10 +284,10 @@ function checkForMoving(image) {
         animateGraphic(graphics.walk, 5);
     }
     if (endScreenOn) {
-        if (isMovingRight && character_x < canvas.width - 120) {
-            character_x = character_x + 7;
-        } else if (isMovingLeft && character_x > 10) {
-            character_x = character_x - 7;
+        if (isMovingRight) {
+            character_x += 5;
+        } else if (isMovingLeft && character_x > -15){
+            character_x -= 5;
         }
     }
     return image;
@@ -311,20 +319,27 @@ function checkForStanding(image) {
 }
 
 function drawThrowBottle() {
-    bottleY = character_y + 25;
-    bottleX = character_x + 50;
-    
-    if (throwStartTime) {
-        takeBottle = false;
-        let timePassed = new Date().getTime() - throwStartTime;
-        let gravity = Math.pow(9.81,timePassed / 200);
-        bottleX = bottleX + (timePassed * 0.6);
-        bottleY = bottleY - (timePassed * 0.3 -gravity);
-    } 
-    if(bottleY > canvas.height){
-        throwStartTime = undefined;
+
+    if(takeBottle || throwStartTime) {
+        bottleY = character_y + 25;
+        bottleX = character_x + 50;
+        
+        if (throwStartTime) {
+            takeBottle = false;
+            let timePassed = new Date().getTime() - throwStartTime;
+            let gravity = Math.pow(9.81,timePassed / 200);
+            bottleX = bottleX + (timePassed * 0.6);
+            bottleY = bottleY - (timePassed * 0.3 -gravity);
+        } 
+        if(bottleY > canvas.height){
+            throwStartTime = undefined;
+            bottleY = "";
+            bottleX = "";
+        }
+        animateGraphic(graphics.botella,10);
+        drawObject("botella", bottleX, bottleY, 0.07, 0.15);
     }
-    if (takeBottle || throwStartTime) drawObject("botella", bottleX, bottleY, 0.07, 0.15);
+    
 }
 
 /**
@@ -361,6 +376,7 @@ function drawAllEnemies() {
  * @param {*} y coordinate to locate the enemy
  */
 function drawEnemy(type, sizeScale, y) {
+
     if (enemySettings[enemyCounter] == undefined) {
         enemySettings[enemyCounter] = {
             type: type,
@@ -374,6 +390,7 @@ function drawEnemy(type, sizeScale, y) {
     let img;
     img = updateEnemy(img);
     checkForEnemyCollision();
+    checkForBottleEnemyCollision();
     animateGraphic(graphics[enemySettings[enemyCounter].type], enemyGraphicsInterval);
     ctx.drawImage(img, enemySettings[enemyCounter].x, enemySettings[enemyCounter].y + 164, img.width * enemySettings[enemyCounter].size, img.height * enemySettings[enemyCounter].size);
     enemyCounter++;
@@ -409,7 +426,7 @@ function checkForEndScreen() {
         AUDIO_BOSS1.play();
         AUDIO_BOSS1.loop = true;
     } else AUDIO_BOSS1.pause();
-    if (character_x >= enemySettings[enemyCounter].x - 300 && !endScreenOn && !gameOver) {
+    if (character_x >= enemySettings[enemyCounter].x - 300 && !endScreenOn) {
         endScreenOn = true;
         AUDIO_BGMUSIC3.play();
         AUDIO_BGMUSIC3.loop = true;
@@ -438,16 +455,16 @@ function updateFinalBoss(image) {
  */
 function finalBossMovements(bossChangeDirection) {
     if (endScreenOn) {
-        if (character_x >= 200 && character_x > enemySettings[enemyCounter].x - 300 && !bossMovingRight && !bossIsAttacking) {
+        if (character_x >= 200 && character_x > enemySettings[enemyCounter].x - 300 && !bossIsHurt && !bossMovingRight && !bossIsAttacking) {
             bossIsAttacking = true;
             enemySettings[enemyCounter].type = "boss-attack";
             enemyGraphicsInterval = 5;
             bossSpeed = randomNum(8, 14);
-        } else if (character_x >= 150 && character_x < 250 && character_x <= enemySettings[enemyCounter].x - 400 && !bossIsAttacking) {
+        } else if (character_x >= 150 && character_x < 250 && character_x <= enemySettings[enemyCounter].x - 400 && !bossIsHurt && !bossIsAttacking) {
             enemySettings[enemyCounter].type = "boss-alert";
             bossSpeed = 0.3;
             enemyGraphicsInterval = 15;
-        } else if (!bossIsAttacking) {
+        } else if (!bossIsAttacking && !bossIsHurt) {
             enemySettings[enemyCounter].type = "boss-walk";
             enemyGraphicsInterval = 10;
             bossSpeed = 5;
@@ -485,9 +502,10 @@ function checkForEnemyCollision() {
             }
             //Character loses energy when by colision was not falling high enough or not falling at all, character loses energy
         } else if (character_x >= enemy_x - 50 && character_x <= enemy_x + 40 && character_y > 200 && !isFalling && !characterIsHurt) {
-            if (graphics["life-bar"].index < 5) graphics["life-bar"].index++;
-            else if (graphics["life-bar"].index == 6) {
-                gaveOver = true;
+            console.log(graphics["life-bar"].index);
+            if (graphics["life-bar"].index < 4) graphics["life-bar"].index++;
+            else if (graphics["life-bar"].index == 4) {
+                gameOver();
                 graphics["life-bar"].index = 0;
             }
             AUDIO_DEAD.play();
@@ -501,9 +519,9 @@ function checkForEnemyCollision() {
         // Colision with Final boss on End screen
     } else if (!enemySettings[enemyCounter].isDead && enemySettings[enemyCounter].type != "pollito" && enemySettings[enemyCounter].type != "gallina") {
         if (character_x >= enemy_x - 25 && character_x <= enemy_x + 40 && character_y > 200 && !isFalling && !characterIsHurt) {
-            if (graphics["life-bar"].index < 5) graphics["life-bar"].index++;
-            else if (graphics["life-bar"].index == 6) {
-                gaveOver = true;
+            if (graphics["life-bar"].index < 4) graphics["life-bar"].index++;
+            else if (graphics["life-bar"].index == 4) {
+                gameOver();
                 graphics["life-bar"].index = 0;
             }
             AUDIO_DEAD.play();
@@ -517,6 +535,43 @@ function checkForEnemyCollision() {
     }
 }
 
+function checkForBottleEnemyCollision (){
+    enemyX = enemySettings[enemyCounter].x;
+    enemyY = enemySettings[enemyCounter].y;
+    if(bottleX >= enemyX - 10 
+        && bottleX <= enemyX + 10 
+        && bottleY >= enemyY - 10 
+        && !enemySettings[enemyCounter].isDead 
+        && !endScreenOn) 
+        {
+        enemySettings[enemyCounter].isDead = true; 
+    }
+    if (endScreenOn && !bossIsHurt
+        && bottleX >= enemyX - 10 
+        && bottleX <= enemyX + 10
+        && graphics["boss-bar"].index <= 4) 
+         {
+         bossHurt();
+    } 
+    else if(endScreenOn && !bossIsHurt
+        && bottleX >= enemyX - 10 
+        && bottleX <= enemyX + 10
+         && graphics["boss-bar"].index == 5) {
+         characterWins();
+    }
+}
+
+function bossHurt(){
+    bossIsHurt = true;
+    enemySettings[enemyCounter].type = "boss-hurt";
+    graphics["boss-bar"].index++;
+    setTimeout(function () {
+        bossIsHurt = false;
+        // AUDIO_DEAD.pause();
+        // AUDIO_DEAD.currentTime = 0;
+    }, 2000);
+}
+
 /**
  * Draws and creates an array of collectable objects
  * @param {*} i index inside the object array
@@ -527,6 +582,7 @@ function checkForEnemyCollision() {
  * @param {*} height This number will be multiply for the canvas height 
  */
 function drawCollectableObject(i, graphicName, total_items, y, width, height) {
+
     //If object type does not exist, creates an object category with its counter, and its array of objects
     if (collectableObject[graphicName] == undefined) {
         collectableObject[graphicName] = {
@@ -545,7 +601,7 @@ function drawCollectableObject(i, graphicName, total_items, y, width, height) {
     collectableObject[graphicName].id[i].x = calculateOffset(collectableObject[graphicName].id[i].x);
     let img = graphics[graphicName].cachedImages[graphics[graphicName].index];
     checkForObjectCollision(i, graphicName);
-    animateGraphic(graphics[graphicName], 50);
+    animateGraphic(graphics[graphicName], 20);
     ctx.drawImage(img, collectableObject[graphicName].id[i].x, collectableObject[graphicName].id[i].y + 100, img.width * width, img.height * height);
 }
 
@@ -602,7 +658,7 @@ function drawObject(graphicName, x, y, width, height) {
  */
 function drawText(text, fontAndSize, x, y) {
     ctx.font = fontAndSize;
-    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
 }
 
 /**
@@ -631,7 +687,7 @@ function addGraphics() {
     addGraphicsList("enemies", "boss-attack", 8);
     addGraphicsList("enemies", "boss-dead", 3);
     addGraphicsList("bars", "life-bar", 6);
-    addGraphicsList("bars", "boss-bar", 1);
+    addGraphicsList("bars", "boss-bar", 6);
     addGraphicsList("icons", "bottle-icon", 1);
     addGraphicsList("icons", "coin-icon", 1);
     addGraphicsList("coin", "coin", 2);
@@ -677,10 +733,12 @@ function listenForKeys() {
         if (k == "ArrowRight") {
             isMovingRight = true;
             isMovingLeft = false;
+            lastMoveForward = true;
         }
         if (k == "ArrowLeft") {
             isMovingLeft = true;
             isMovingRight = false;
+            lastMoveForward = false;
         }
         if (k == "ArrowUp") {
             if (!isFalling) isJumping = true;
@@ -694,6 +752,13 @@ function listenForKeys() {
             else if (!AUDIO_BGMUSIC3.paused && endScreenOn) AUDIO_BGMUSIC3.pause();
             else if (AUDIO_BGMUSIC3.paused && endScreenOn) AUDIO_BGMUSIC3.play();
         }
+        if(k == "r") {
+            window.location.reload();
+        }
+        if(k == "h") {
+            document.getElementById("help-screen").classList.remove("d-none");
+            document.getElementById("canvas-box").classList.add("d-none");
+        }
     });
 
 
@@ -701,11 +766,11 @@ function listenForKeys() {
         const k = e.key;
         if (k == "ArrowRight") {
             isMovingRight = false;
-            lastMoveForward = true;
+           // lastMoveForward = true;
         }
         if (k == "ArrowLeft") {
             isMovingLeft = false;
-            lastMoveForward = false;
+            //lastMoveForward = false;
         }
         if (k == "ArrowUp") {
             isJumping = false;
@@ -717,6 +782,11 @@ function listenForKeys() {
                 collectableObject["bottle1"].count--;
                 throwStartTime = new Date().getTime();
             }
+        }
+        if(k == "h") {
+            document.getElementById("help-screen").classList.add("d-none");
+            document.getElementById("canvas-box").classList.remove("d-none");
+
         }
     });
 }
@@ -731,4 +801,23 @@ function randomNum(min, max) {
         return Math.floor(Math.random() * (max - min + 1) + min);
     else if (!Number.isInteger(min) && !Number.isInteger(max))
         return Math.random() * (max - min) + min;
+}
+
+function startGame(){
+    document.getElementById("canvas-box").classList.remove("d-none");
+    document.getElementById("btn-start-box").classList.add("d-none");
+    init();
+}
+
+function gameOver(){
+    gameIsOver = true;
+    AUDIO_BGMUSIC3.pause();
+    document.getElementById("canvas-box").classList.add("d-none");
+    document.getElementById("btn-gameOver-box").classList.remove("d-none");
+}
+function characterWins(){
+    gameIsOver = true;
+    AUDIO_BGMUSIC3.pause();
+    document.getElementById("canvas-box").classList.add("d-none");
+    document.getElementById("btn-win-box").classList.remove("d-none");
 }

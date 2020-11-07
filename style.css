@@ -8,18 +8,94 @@ body {
     flex-direction: column;
     align-content: center;
 }
-canvas {
+.canvas-box {
     display: flex;
     margin: auto;
-    z-index: 0;
+    opacity: 1;
+    animation: oppacityUpAni 2s ease;
 }
 h1 {
     text-align: center;
 }
 
-opacity-on {
-    opacity: 0.5;
+.controls {
+    text-align: center;
+    margin: auto;
 }
-d-none {
+
+button {
+    display: flex;
+    font-size: 1em;
+    background-color: aliceblue;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    box-shadow: 2px 2px black;
+    border-radius: 15px;
+}
+button:hover{
+    transform: scale(1.3);
+}
+
+
+.btn-start-box, .btn-gameOver-box, .btn-win-box {
+    display: flex;
+    position: relative;
+    background: url("img/background/bg-game.png"), rgba(255,255,255,0.2);
+    background-position: center;
+    background-size: cover;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 3em;
+    width: 920px;
+    height: 480px;
+    margin : auto;
+    border: none;
+}
+
+.help-screen {
+    display: flex;
+    position: relative;
+    background: url("img/help/helpscreen.png");
+    background-size: cover;
+    justify-content: center;
+    align-items: center;
+    font-size: 5em;
+    width: 920px;
+    height: 480px;
+    margin : auto;
+    z-index: 3;
+    border: none;
+}
+
+.btn-start-box h2 {
+    text-shadow: 5px 5px grey;
+}
+
+
+@keyframes appearAni {
+    0% {
+        opacity: 0
+    }
+    100% {
+        opacity: 1;
+    }
+}
+@keyframes disappearAni {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.d-none {
     display: none;
+    position: relative;
+    z-index: -1;
+    opacity: 0;
+    animation: disappearAni 2s ease;
 }

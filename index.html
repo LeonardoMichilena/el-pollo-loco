@@ -1,19 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <script src="graphics.js"></script>
     <script src="game.js"></script>
     <title>El Pollo Loco</title>
 </head>
-<body onload="init()">
-    <h1>El Pollo Loco</h1>
-    <canvas id="canvas" width="920" height="480">
-    </canvas>
-   
-   
+
+<body>
+    <!-- Header -->
+    <header id="header">
+        <h1>El Pollo Loco</h1>
+    </header>
+
+    <!-- Start Button -->
+    <div class="btn-start-box" id="btn-start-box">
+        <h2>El Pollo Loco!</h2>
+        <button class="btn-start" onclick="startGame()">Start!</button>
+    </div>
+        
+    <!-- Canvas Box -->
+    <div id="canvas-box" class="d-none canvas-box"> 
+        <canvas id="canvas" width="920" height="480"></canvas>
+    </div>
+
+    <!-- Game Over Box -->
+    <div class="btn-gameOver-box d-none" id="btn-gameOver-box">
+        <h2>Game Over!</h2>
+        <button class="btn-restart" onclick="window.location.reload()">Restart</button>
+    </div>
+
+     <!-- You Wins Box -->
+     <div class="btn-win-box d-none" id="btn-win-box">
+        <h2>Congratulations! You win!</h2>
+        <button class="btn-restart" onclick="window.location.reload()">Restart!</button>
+    </div>
+
+    <!-- Help Screen -->
+    <div class="help-screen d-none" id="help-screen">
+    </div>
+
+     <!-- Controls Help -->
+    <footer id="controls-box">
+        <h3 class="controls">Arrows Left/Right = Walk | Arrow Up = Jump | Spacebar = Throw Tabasco</h3>
+        <h3 class="controls">H = Help Screen | M = On/Off Background Music | R = Restart</h3>
+    </footer>
 
 </body>
+
 </html>
